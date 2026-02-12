@@ -33,7 +33,37 @@ jobs:
   integration-tests:
     runs-on: ubuntu-latest
     needs: build-and-test
-    timeout-minutes: 40
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: alpine
+            image: alpine:3.20
+            probe_path: /etc/alpine-release
+            probe_command: cat /etc/alpine-release
+            probe_expect: "3.20"
+          - distro: debian
+            image: debian:bookworm-slim
+            probe_path: /etc/debian_version
+            probe_command: cat /etc/debian_version
+            probe_expect: "12"
+          - distro: ubuntu
+            image: ubuntu:24.04
+            probe_path: /etc/os-release
+            probe_command: . /etc/os-release; echo "$ID:$VERSION_ID"
+            probe_expect: ubuntu:24.04
+          - distro: fedora
+            image: fedora:41
+            probe_path: /etc/fedora-release
+            probe_command: cat /etc/fedora-release
+            probe_expect: "Fedora release 41"
+          - distro: archlinux
+            image: archlinux:latest
+            probe_path: /etc/os-release
+            probe_command: . /etc/os-release; echo "$ID"
+            probe_expect: arch
+    name: integration-tests (${{ matrix.distro }})
 
     steps:
       - name: Checkout
@@ -52,10 +82,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 e2fsprogs
 
+      - name: Prime Gondolin guest assets
+        run: bun --eval 'import { ensureGuestAssets } from "@earendil-works/gondolin"; await ensureGuestAssets();'
+
       - name: Run integration tests
         env:
           INTEGRATION_PLATFORM: linux/amd64
-          INTEGRATION_IMAGE: busybox:latest
+          INTEGRATION_IMAGE: ${{ matrix.image }}
+          INTEGRATION_ROOTFS_CHECK_PATH: ${{ matrix.probe_path }}
+          INTEGRATION_VM_CHECK_COMMAND: ${{ matrix.probe_command }}
+          INTEGRATION_VM_CHECK_EXPECT: ${{ matrix.probe_expect }}
         run: bun run test:integration
 
   e2e-smoke:
@@ -79,6 +115,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 e2fsprogs
+
+      - name: Prime Gondolin guest assets
+        run: bun --eval 'import { ensureGuestAssets } from "@earendil-works/gondolin"; await ensureGuestAssets();'
 
       - name: Run end-to-end smoke test
         env:

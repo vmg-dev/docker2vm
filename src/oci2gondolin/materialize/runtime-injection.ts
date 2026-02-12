@@ -2,9 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { ensureGuestAssets } from "@earendil-works/gondolin";
-
 import { CliUsageError } from "../../shared/cli-errors";
+import { resolveGondolinGuestAssets } from "../../shared/gondolin-assets";
 
 type RuntimeFileSpec = {
   sourcePathInRootfs: string;
@@ -26,6 +25,11 @@ const REQUIRED_RUNTIME_FILES: RuntimeFileSpec[] = [
   {
     sourcePathInRootfs: "/bin/kmod",
     targetRelativePath: "bin/kmod",
+    mode: 0o755,
+  },
+  {
+    sourcePathInRootfs: "/bin/busybox",
+    targetRelativePath: "bin/busybox",
     mode: 0o755,
   },
   {
@@ -89,13 +93,13 @@ export interface RuntimeInjectionResult {
 }
 
 export async function extractBaseRootfsTree(destinationDir: string): Promise<string> {
-  const guestAssets = await ensureGuestAssets();
+  const guestAssets = await resolveGondolinGuestAssets();
   const baseRootfsPath = guestAssets.rootfsPath;
 
   if (!fs.existsSync(baseRootfsPath)) {
     throw new CliUsageError("Gondolin base rootfs.ext4 was not found.", [
       `Expected path: ${baseRootfsPath}`,
-      "Run a gondolin command once to download guest assets, then retry.",
+      "Guest assets should be downloaded automatically via @earendil-works/gondolin; verify network access and retry.",
     ]);
   }
 
@@ -119,13 +123,13 @@ export async function extractBaseRootfsTree(destinationDir: string): Promise<str
 }
 
 export async function injectGondolinRuntime(rootfsDir: string): Promise<RuntimeInjectionResult> {
-  const guestAssets = await ensureGuestAssets();
+  const guestAssets = await resolveGondolinGuestAssets();
   const baseRootfsPath = guestAssets.rootfsPath;
 
   if (!fs.existsSync(baseRootfsPath)) {
     throw new CliUsageError("Gondolin base rootfs.ext4 was not found.", [
       `Expected path: ${baseRootfsPath}`,
-      "Run a gondolin command once to download guest assets, then retry.",
+      "Guest assets should be downloaded automatically via @earendil-works/gondolin; verify network access and retry.",
     ]);
   }
 

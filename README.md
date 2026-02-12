@@ -1,8 +1,8 @@
 # docker2vm
 
-`docker2vm` converts OCI container images (or Dockerfiles via BuildKit) into VM-compatible outputs. Today, the runtime materialization target is Gondolin.
+`docker2vm` converts OCI container images (or Dockerfiles via BuildKit) into VM-compatible outputs. Today, the runtime materialization target is [Gondolin](https://github.com/earendil-works/gondolin).
 
-It follows an OCI-first flow inspired by "Docker without Docker":
+It follows an OCI-first flow inspired by ["Docker without Docker"](https://fly.io/blog/docker-without-docker/):
 
 - resolve/pull an OCI image
 - apply layers to a root filesystem
@@ -16,6 +16,7 @@ Docker containers share the host kernel. Gondolin runs workloads inside a VM, so
 
 ## Current features
 
+- pinned Gondolin runtime dependency (`@earendil-works/gondolin@0.2.1`) for guest-asset retrieval
 - `oci2gondolin` core converter
   - input: `--image`, `--oci-layout`, `--oci-tar` (exactly one)
   - platform: `linux/amd64`, `linux/arm64`
@@ -36,28 +37,23 @@ Docker containers share the host kernel. Gondolin runs workloads inside a VM, so
 
 ## Requirements
 
-- Bun >= 1.2
-- `e2fsprogs` (`mke2fs`, `debugfs`)
-- QEMU (for runtime smoke checks via `gondolin exec`)
-- Docker (only required for `dockerfile2gondolin`)
+- Bun >= 1.2 — https://bun.com/
+- `e2fsprogs` (`mke2fs`, `debugfs`) — https://e2fsprogs.sourceforge.net/
+- QEMU (for runtime smoke checks) — https://www.qemu.org/download/
+- Docker (only required for `dockerfile2gondolin`) — https://docs.docker.com/get-docker/
 
-macOS helpers:
+`docker2vm` uses `@earendil-works/gondolin@0.2.1` as a runtime dependency and resolves/downloads guest assets automatically during conversion.
 
-```bash
-brew install e2fsprogs qemu
-```
+If you also want to run generated assets with `gondolin exec`, install the Gondolin CLI:
+- CLI docs: https://earendil-works.github.io/gondolin/cli/
+- Package: https://www.npmjs.com/package/@earendil-works/gondolin
 
-Ubuntu helpers:
+> On macOS, `docker2vm` checks common Homebrew `e2fsprogs` locations automatically; updating `PATH` is usually optional.
 
-```bash
-sudo apt-get install -y e2fsprogs qemu-system-x86
-```
+## Platform setup guides
 
-## Install
-
-```bash
-bun install
-```
+- [macOS guide](./docs/macos.md)
+- [Linux guide](./docs/linux.md)
 
 ## Quickstart
 
@@ -75,6 +71,32 @@ bun run build
 bun run test:integration
 ```
 
+The CI integration matrix currently validates:
+
+- `alpine:3.20`
+- `debian:bookworm-slim`
+- `ubuntu:24.04`
+- `fedora:41`
+- `archlinux:latest`
+
+For each distro row, tests run a distro-specific probe command (for example `/etc/debian_version`, `/etc/fedora-release`, etc.), assert that probe does **not** match on the base Gondolin guest image, and verify `/bin/busybox` executes inside the converted image.
+
+### Choosing the build platform (`--platform`)
+
+`--platform` selects which OCI image variant to convert, and should match the architecture you plan to run in Gondolin. This applies to both `oci2gondolin` and `dockerfile2gondolin`.
+
+- Apple Silicon / arm64 Linux hosts: `linux/arm64`
+- Intel / amd64 hosts: `linux/amd64`
+- If omitted, both commands default from host arch (`x64 -> linux/amd64`, `arm64 -> linux/arm64`).
+- You can always override manually with `--platform linux/amd64` or `--platform linux/arm64`.
+
+For helper scripts:
+
+- `e2e:smoke` uses `PLATFORM`
+- integration tests use `INTEGRATION_PLATFORM`
+
+Cross-arch builds are possible at image-selection time, but for reliable runtime execution you should use a platform that matches the runtime guest architecture.
+
 ### 2) Convert image -> assets
 
 ```bash
@@ -88,7 +110,7 @@ bun run oci2gondolin -- \
 ### 3) Run with Gondolin
 
 ```bash
-GONDOLIN_GUEST_DIR=./out/busybox-assets bunx gondolin exec -- /bin/busybox echo hello
+GONDOLIN_GUEST_DIR=./out/busybox-assets gondolin exec -- /bin/busybox echo hello
 ```
 
 ## Dockerfile flow
@@ -113,7 +135,7 @@ bun run dockerfile2gondolin -- \
 Then run:
 
 ```bash
-GONDOLIN_GUEST_DIR=./out/demo-assets bunx gondolin exec -- /usr/games/cowsay "hello"
+GONDOLIN_GUEST_DIR=./out/demo-assets gondolin exec -- /usr/games/cowsay "hello"
 ```
 
 ## End-to-end smoke test
@@ -176,4 +198,5 @@ dockerfile2gondolin --file PATH --context PATH --out PATH [options]
 ## Repo notes
 
 - This repo is standalone; Gondolin core is not modified.
+- Gondolin upstream repository: https://github.com/earendil-works/gondolin
 - `out/` is generated output and ignored by git.

@@ -5,7 +5,7 @@
     "": {
       "name": "docker2vm",
       "dependencies": {
-        "@earendil-works/gondolin": "^0.2.1",
+        "@earendil-works/gondolin": "0.2.1",
       },
       "devDependencies": {
         "@types/node": "^22.13.10",
