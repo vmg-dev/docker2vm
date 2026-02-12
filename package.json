@@ -12,7 +12,8 @@
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "bun test",
+    "test": "bun test test/*.test.ts",
+    "test:integration": "bun test test/integration --timeout 300000 --max-concurrency 1",
     "e2e:smoke": "bash ./scripts/e2e-smoke.sh",
     "oci2gondolin": "bun run src/bin/oci2gondolin.ts",
     "dockerfile2gondolin": "bun run src/bin/dockerfile2gondolin.ts"

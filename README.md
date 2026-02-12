@@ -69,6 +69,12 @@ bun run typecheck
 bun run build
 ```
 
+### 1b) Run integration tests
+
+```bash
+bun run test:integration
+```
+
 ### 2) Convert image -> assets
 
 ```bash
