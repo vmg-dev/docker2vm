@@ -2,6 +2,8 @@
 
 This guide is for running `docker2vm` on macOS (Apple Silicon or Intel).
 
+`docker2vm` itself has **0 runtime npm dependencies**; system/runtime tools are installed separately.
+
 ## 1) Install required tools
 
 ```bash
@@ -10,43 +12,55 @@ brew install bun qemu e2fsprogs
 
 If you want Dockerfile conversion (`dockerfile2gondolin`), also install Docker Desktop.
 
-## 2) Ensure `mke2fs` and `debugfs` are on `PATH`
+## 2) Optional: add `e2fsprogs` binaries to `PATH`
 
-`e2fsprogs` is often keg-only on macOS.
+With Homebrew, `e2fsprogs` is often keg-only. `docker2vm` checks common Homebrew locations automatically, so a PATH change is usually **not required** for normal usage.
 
-### Apple Silicon (`/opt/homebrew`)
-
-```bash
-echo 'export PATH="/opt/homebrew/opt/e2fsprogs/sbin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
-```
-
-### Intel (`/usr/local`)
+If you want to run `mke2fs` / `debugfs` manually in your shell:
 
 ```bash
-echo 'export PATH="/usr/local/opt/e2fsprogs/sbin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
+export PATH="$(brew --prefix e2fsprogs)/sbin:$PATH"
 ```
 
-## 3) Verify toolchain
+To persist it, add that `export PATH=...` line to your shell profile (`~/.zshrc`, `~/.bashrc`, `~/.profile`, etc.).
+
+## 3) Install Gondolin CLI separately (tested version)
+
+`docker2vm` is tested with:
+
+- `@earendil-works/gondolin@0.2.1`
+
+Install (global):
+
+```bash
+bun add -g @earendil-works/gondolin@0.2.1
+```
+
+Prime guest assets once:
+
+```bash
+gondolin exec -- /bin/true
+```
+
+## 4) Verify toolchain
 
 ```bash
 bun --version
 qemu-system-aarch64 --version || qemu-system-x86_64 --version
-mke2fs -V
-debugfs -V
+"$(brew --prefix e2fsprogs)/sbin/mke2fs" -V
+"$(brew --prefix e2fsprogs)/sbin/debugfs" -V
+gondolin --help >/dev/null
 ```
 
-## 4) Install dependencies and validate
+## 5) Validate from source checkout
 
 ```bash
-bun install
 bun run test
 bun run typecheck
 bun run build
 ```
 
-## 5) Choose the build platform
+## 6) Choose the build platform
 
 Use a platform that matches the architecture you will run in Gondolin.
 
@@ -65,7 +79,7 @@ bun run oci2gondolin -- \
   --out ./out/busybox-assets
 ```
 
-## 6) Run integration + smoke checks
+## 7) Run integration + smoke checks
 
 Apple Silicon:
 
@@ -85,7 +99,7 @@ PLATFORM=linux/amd64 bun run e2e:smoke
 
 ### `mke2fs` / `debugfs` not found
 
-Confirm PATH includes the `e2fsprogs` `sbin` directory shown above.
+`docker2vm` should find common Homebrew locations automatically. If your install uses a custom prefix, either add it to `PATH` or point `GONDOLIN_GUEST_DIR` to prepared assets and verify `e2fsprogs` binaries are installed.
 
 ### Case-sensitive filename conflicts during conversion
 

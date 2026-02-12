@@ -82,6 +82,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 e2fsprogs
 
+      - name: Prime Gondolin guest assets
+        run: bunx gondolin exec -- /bin/true
+
       - name: Run integration tests
         env:
           INTEGRATION_PLATFORM: linux/amd64
@@ -112,6 +115,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 e2fsprogs
+
+      - name: Prime Gondolin guest assets
+        run: bunx gondolin exec -- /bin/true
 
       - name: Run end-to-end smoke test
         env:

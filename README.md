@@ -2,7 +2,7 @@
 
 `docker2vm` converts OCI container images (or Dockerfiles via BuildKit) into VM-compatible outputs. Today, the runtime materialization target is [Gondolin](https://github.com/earendil-works/gondolin).
 
-It follows an OCI-first flow inspired by "Docker without Docker":
+It follows an OCI-first flow inspired by ["Docker without Docker"](https://fly.io/blog/docker-without-docker/):
 
 - resolve/pull an OCI image
 - apply layers to a root filesystem
@@ -16,6 +16,7 @@ Docker containers share the host kernel. Gondolin runs workloads inside a VM, so
 
 ## Current features
 
+- zero runtime npm dependencies (`dependencies: {}`)
 - `oci2gondolin` core converter
   - input: `--image`, `--oci-layout`, `--oci-tar` (exactly one)
   - platform: `linux/amd64`, `linux/arm64`
@@ -39,6 +40,7 @@ Docker containers share the host kernel. Gondolin runs workloads inside a VM, so
 - Bun >= 1.2
 - `e2fsprogs` (`mke2fs`, `debugfs`)
 - QEMU (for runtime smoke checks via `gondolin exec`)
+- Gondolin CLI installed separately (tested with `@earendil-works/gondolin@0.2.1`)
 - Docker (only required for `dockerfile2gondolin`)
 
 macOS helpers:
@@ -53,16 +55,24 @@ Ubuntu helpers:
 sudo apt-get install -y e2fsprogs qemu-system-x86
 ```
 
+Install Gondolin CLI (tested version):
+
+```bash
+bun add -g @earendil-works/gondolin@0.2.1
+```
+
+Prime guest assets once:
+
+```bash
+gondolin exec -- /bin/true
+```
+
+> On macOS, `docker2vm` checks common Homebrew `e2fsprogs` locations automatically; updating `PATH` is usually optional.
+
 ## Platform setup guides
 
 - [macOS guide](./docs/macos.md)
 - [Linux guide](./docs/linux.md)
-
-## Install
-
-```bash
-bun install
-```
 
 ## Quickstart
 
@@ -92,11 +102,12 @@ For each distro row, tests run a distro-specific probe command (for example `/et
 
 ### Choosing the build platform (`--platform`)
 
-`--platform` selects which OCI image variant to convert, and should match the architecture you plan to run in Gondolin.
+`--platform` selects which OCI image variant to convert, and should match the architecture you plan to run in Gondolin. This applies to both `oci2gondolin` and `dockerfile2gondolin`.
 
 - Apple Silicon / arm64 Linux hosts: `linux/arm64`
 - Intel / amd64 hosts: `linux/amd64`
-- If omitted, `oci2gondolin` defaults from host arch (`x64 -> linux/amd64`, `arm64 -> linux/arm64`).
+- If omitted, both commands default from host arch (`x64 -> linux/amd64`, `arm64 -> linux/arm64`).
+- You can always override manually with `--platform linux/amd64` or `--platform linux/arm64`.
 
 For helper scripts:
 
@@ -118,7 +129,7 @@ bun run oci2gondolin -- \
 ### 3) Run with Gondolin
 
 ```bash
-GONDOLIN_GUEST_DIR=./out/busybox-assets bunx gondolin exec -- /bin/busybox echo hello
+GONDOLIN_GUEST_DIR=./out/busybox-assets gondolin exec -- /bin/busybox echo hello
 ```
 
 ## Dockerfile flow
@@ -143,7 +154,7 @@ bun run dockerfile2gondolin -- \
 Then run:
 
 ```bash
-GONDOLIN_GUEST_DIR=./out/demo-assets bunx gondolin exec -- /usr/games/cowsay "hello"
+GONDOLIN_GUEST_DIR=./out/demo-assets gondolin exec -- /usr/games/cowsay "hello"
 ```
 
 ## End-to-end smoke test

@@ -4,10 +4,8 @@
   "workspaces": {
     "": {
       "name": "docker2vm",
-      "dependencies": {
-        "@earendil-works/gondolin": "^0.2.1",
-      },
       "devDependencies": {
+        "@earendil-works/gondolin": "0.2.1",
         "@types/node": "^22.13.10",
         "typescript": "^5.7.3",
       },

@@ -2,6 +2,8 @@
 
 This guide is for running `docker2vm` on Linux hosts.
 
+`docker2vm` itself has **0 runtime npm dependencies**; system/runtime tools are installed separately.
+
 ## 1) Install required tools
 
 ### Ubuntu / Debian
@@ -15,30 +17,49 @@ Install Bun:
 
 ```bash
 curl -fsSL https://bun.sh/install | bash
-source ~/.bashrc
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
 ```
 
 If you want Dockerfile conversion (`dockerfile2gondolin`), install Docker and Buildx.
 
-## 2) Verify toolchain
+## 2) Install Gondolin CLI separately (tested version)
+
+`docker2vm` is tested with:
+
+- `@earendil-works/gondolin@0.2.1`
+
+Install (global):
+
+```bash
+bun add -g @earendil-works/gondolin@0.2.1
+```
+
+Prime guest assets once:
+
+```bash
+gondolin exec -- /bin/true
+```
+
+## 3) Verify toolchain
 
 ```bash
 bun --version
 qemu-system-x86_64 --version
 mke2fs -V
 debugfs -V
+gondolin --help >/dev/null
 ```
 
-## 3) Install dependencies and validate
+## 4) Validate from source checkout
 
 ```bash
-bun install
 bun run test
 bun run typecheck
 bun run build
 ```
 
-## 4) Choose the build platform
+## 5) Choose the build platform
 
 Use a platform that matches the architecture you will run in Gondolin.
 
@@ -57,7 +78,7 @@ bun run oci2gondolin -- \
   --out ./out/busybox-assets
 ```
 
-## 5) Run integration + smoke checks
+## 6) Run integration + smoke checks
 
 amd64 host:
 

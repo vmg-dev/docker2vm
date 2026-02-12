@@ -1,10 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { ensureGuestAssets } from "@earendil-works/gondolin";
-
 import type { AppliedRootfs, MaterializedOutput, Oci2GondolinOptions } from "../types";
 import { sha256File } from "../utils/digest";
+import { resolveGondolinGuestAssets } from "../../shared/gondolin-assets";
 import { ensureDirectory } from "../utils/fs";
 import { createExt4FromDirectory } from "./ext4";
 import { injectGondolinRuntime } from "./runtime-injection";
@@ -51,7 +50,7 @@ export async function materializeOutput(
   let assetManifestPath: string | undefined;
 
   if (options.mode === "assets") {
-    const baseAssets = await ensureGuestAssets();
+    const baseAssets = resolveGondolinGuestAssets();
     const kernelPath = path.join(outDir, KERNEL_FILENAME);
     const initramfsPath = path.join(outDir, INITRAMFS_FILENAME);
 

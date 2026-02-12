@@ -2,9 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { ensureGuestAssets } from "@earendil-works/gondolin";
-
 import { CliUsageError } from "../../shared/cli-errors";
+import { resolveGondolinGuestAssets } from "../../shared/gondolin-assets";
 
 type RuntimeFileSpec = {
   sourcePathInRootfs: string;
@@ -89,7 +88,7 @@ export interface RuntimeInjectionResult {
 }
 
 export async function extractBaseRootfsTree(destinationDir: string): Promise<string> {
-  const guestAssets = await ensureGuestAssets();
+  const guestAssets = resolveGondolinGuestAssets();
   const baseRootfsPath = guestAssets.rootfsPath;
 
   if (!fs.existsSync(baseRootfsPath)) {
@@ -119,7 +118,7 @@ export async function extractBaseRootfsTree(destinationDir: string): Promise<str
 }
 
 export async function injectGondolinRuntime(rootfsDir: string): Promise<RuntimeInjectionResult> {
-  const guestAssets = await ensureGuestAssets();
+  const guestAssets = resolveGondolinGuestAssets();
   const baseRootfsPath = guestAssets.rootfsPath;
 
   if (!fs.existsSync(baseRootfsPath)) {
