@@ -35,10 +35,10 @@ export function assertDirectoryExists(dirPath: string, label: string): void {
 export function getCacheRoot(): string {
   const xdgCache = process.env.XDG_CACHE_HOME;
   if (xdgCache && xdgCache.trim().length > 0) {
-    return path.resolve(xdgCache, "gondolin-image-tools");
+    return path.resolve(xdgCache, "docker2vm");
   }
 
-  return path.resolve(os.homedir(), ".cache", "gondolin-image-tools");
+  return path.resolve(os.homedir(), ".cache", "docker2vm");
 }
 
 export function getBlobCachePath(digest: string): string {

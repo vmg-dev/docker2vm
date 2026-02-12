@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "gondolin-image-tools",
+      "name": "docker2vm",
       "dependencies": {
         "@earendil-works/gondolin": "^0.2.1",
       },

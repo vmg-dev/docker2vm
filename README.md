@@ -1,6 +1,6 @@
-# gondolin-image-tools
+# docker2vm
 
-`gondolin-image-tools` converts OCI container images (or Dockerfiles via BuildKit) into Gondolin-compatible outputs.
+`docker2vm` converts OCI container images (or Dockerfiles via BuildKit) into VM-compatible outputs. Today, the runtime materialization target is Gondolin.
 
 It follows an OCI-first flow inspired by "Docker without Docker":
 

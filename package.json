@@ -1,8 +1,8 @@
 {
-  "name": "gondolin-image-tools",
+  "name": "docker2vm",
   "version": "0.1.0",
   "private": true,
-  "description": "OCI-first external image tooling for Gondolin",
+  "description": "OCI-first container-to-VM image tooling",
   "license": "Apache-2.0",
   "type": "commonjs",
   "bin": {
