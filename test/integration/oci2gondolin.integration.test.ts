@@ -22,17 +22,21 @@ type CommandOptions = {
 const REPO_ROOT = process.cwd();
 const IMAGE = process.env.INTEGRATION_IMAGE ?? "busybox:latest";
 const PLATFORM = resolveIntegrationPlatform(process.env.INTEGRATION_PLATFORM ?? process.arch);
+const ROOTFS_CHECK_PATH = process.env.INTEGRATION_ROOTFS_CHECK_PATH ?? "/bin/sh";
+const VM_CHECK_COMMAND = process.env.INTEGRATION_VM_CHECK_COMMAND ?? "echo integration-vm-ok";
+const VM_CHECK_EXPECT = process.env.INTEGRATION_VM_CHECK_EXPECT ?? "integration-vm-ok";
 
-const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docker2vm-integration-"));
-const rootfsOutDir = path.join(tempRoot, "busybox-rootfs");
-const assetsOutDir = path.join(tempRoot, "busybox-assets");
+const imageSlug = IMAGE.replace(/[^a-z0-9._-]+/gi, "-").toLowerCase();
+const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), `docker2vm-integration-${imageSlug}-`));
+const rootfsOutDir = path.join(tempRoot, `${imageSlug}-rootfs`);
+const assetsOutDir = path.join(tempRoot, `${imageSlug}-assets`);
 
 afterAll(() => {
   fs.rmSync(tempRoot, { recursive: true, force: true });
 });
 
 describe("oci2gondolin integration", () => {
-  it("materializes a busybox rootfs image", async () => {
+  it(`materializes a rootfs image for ${IMAGE}`, async () => {
     const debugfsBinary = requireBinary("debugfs", [
       "/opt/homebrew/opt/e2fsprogs/sbin/debugfs",
       "/usr/local/opt/e2fsprogs/sbin/debugfs",
@@ -52,7 +56,7 @@ describe("oci2gondolin integration", () => {
         "--out",
         rootfsOutDir,
       ],
-      { cwd: REPO_ROOT, timeoutMs: 180_000 },
+      { cwd: REPO_ROOT, timeoutMs: 300_000 },
     );
 
     assertSuccess(result, "oci2gondolin rootfs conversion");
@@ -76,16 +80,16 @@ describe("oci2gondolin integration", () => {
 
     const debugfsResult = await runCommand(
       debugfsBinary,
-      ["-R", "stat /bin/busybox", rootfsPath],
+      ["-R", `stat ${ROOTFS_CHECK_PATH}`, rootfsPath],
       { timeoutMs: 30_000 },
     );
 
-    assertSuccess(debugfsResult, "debugfs stat /bin/busybox");
+    assertSuccess(debugfsResult, `debugfs stat ${ROOTFS_CHECK_PATH}`);
     const debugText = `${debugfsResult.stdout}\n${debugfsResult.stderr}`.toLowerCase();
     expect(debugText).not.toContain("file not found by ext2_lookup");
-  }, 240_000);
+  }, 420_000);
 
-  it("materializes busybox assets and executes inside a VM", async () => {
+  it(`materializes assets for ${IMAGE} and executes inside a VM`, async () => {
     requireBinary(process.arch === "arm64" ? "qemu-system-aarch64" : "qemu-system-x86_64");
 
     const result = await runCommand(
@@ -102,7 +106,7 @@ describe("oci2gondolin integration", () => {
         "--out",
         assetsOutDir,
       ],
-      { cwd: REPO_ROOT, timeoutMs: 180_000 },
+      { cwd: REPO_ROOT, timeoutMs: 300_000 },
     );
 
     assertSuccess(result, "oci2gondolin assets conversion");
@@ -141,9 +145,9 @@ describe("oci2gondolin integration", () => {
       process.env.GONDOLIN_GUEST_DIR = assetsOutDir;
       vm = await VM.create({ sandbox: vmSandbox });
 
-      const execResult = await vm.exec(["/bin/busybox", "echo", "integration-vm-ok"]);
+      const execResult = await vm.exec(["/bin/sh", "-lc", VM_CHECK_COMMAND]);
       expect(execResult.exitCode).toBe(0);
-      expect(execResult.stdout).toContain("integration-vm-ok");
+      expect(execResult.stdout).toContain(VM_CHECK_EXPECT);
     } finally {
       await vm?.close().catch(() => {
         // ignore close errors in test teardown
@@ -155,7 +159,7 @@ describe("oci2gondolin integration", () => {
         process.env.GONDOLIN_GUEST_DIR = originalGuestDir;
       }
     }
-  }, 300_000);
+  }, 420_000);
 });
 
 function resolveIntegrationPlatform(raw: string): "linux/amd64" | "linux/arm64" {

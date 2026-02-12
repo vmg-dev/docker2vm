@@ -80,6 +80,14 @@ bun run build
 bun run test:integration
 ```
 
+The CI integration matrix currently validates:
+
+- `alpine:3.20`
+- `debian:bookworm-slim`
+- `ubuntu:24.04`
+- `fedora:41`
+- `archlinux:latest`
+
 ### Choosing the build platform (`--platform`)
 
 `--platform` selects which OCI image variant to convert, and should match the architecture you plan to run in Gondolin.

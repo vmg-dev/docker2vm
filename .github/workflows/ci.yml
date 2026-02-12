@@ -33,7 +33,22 @@ jobs:
   integration-tests:
     runs-on: ubuntu-latest
     needs: build-and-test
-    timeout-minutes: 40
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: alpine
+            image: alpine:3.20
+          - distro: debian
+            image: debian:bookworm-slim
+          - distro: ubuntu
+            image: ubuntu:24.04
+          - distro: fedora
+            image: fedora:41
+          - distro: archlinux
+            image: archlinux:latest
+    name: integration-tests (${{ matrix.distro }})
 
     steps:
       - name: Checkout
@@ -55,7 +70,10 @@ jobs:
       - name: Run integration tests
         env:
           INTEGRATION_PLATFORM: linux/amd64
-          INTEGRATION_IMAGE: busybox:latest
+          INTEGRATION_IMAGE: ${{ matrix.image }}
+          INTEGRATION_ROOTFS_CHECK_PATH: /bin/sh
+          INTEGRATION_VM_CHECK_COMMAND: echo integration-vm-ok
+          INTEGRATION_VM_CHECK_EXPECT: integration-vm-ok
         run: bun run test:integration
 
   e2e-smoke:
