@@ -29,11 +29,6 @@ const REQUIRED_RUNTIME_FILES: RuntimeFileSpec[] = [
     mode: 0o755,
   },
   {
-    sourcePathInRootfs: "/lib/ld-musl-aarch64.so.1",
-    targetRelativePath: "lib/ld-musl-aarch64.so.1",
-    mode: 0o755,
-  },
-  {
     sourcePathInRootfs: "/usr/lib/libcrypto.so.3",
     targetRelativePath: "usr/lib/libcrypto.so.3",
     mode: 0o644,
@@ -69,6 +64,8 @@ const REQUIRED_RUNTIME_FILES: RuntimeFileSpec[] = [
     mode: 0o755,
   },
 ];
+
+const LOADER_CANDIDATE_PATHS = ["/lib/ld-musl-aarch64.so.1", "/lib/ld-musl-x86_64.so.1"];
 
 const REQUIRED_RUNTIME_DIRECTORIES: RuntimeDirectorySpec[] = [
   {
@@ -136,6 +133,23 @@ export async function injectGondolinRuntime(rootfsDir: string): Promise<RuntimeI
   const injectedFiles: string[] = [];
   const injectedDirectories: string[] = [];
 
+  const loaderSourcePath = resolveExistingPathInExt4(
+    debugfsCmd,
+    baseRootfsPath,
+    LOADER_CANDIDATE_PATHS,
+    "musl dynamic loader",
+  );
+  const loaderFileName = path.posix.basename(loaderSourcePath);
+
+  const runtimeFiles: RuntimeFileSpec[] = [
+    ...REQUIRED_RUNTIME_FILES,
+    {
+      sourcePathInRootfs: loaderSourcePath,
+      targetRelativePath: `lib/${loaderFileName}`,
+      mode: 0o755,
+    },
+  ];
+
   for (const runtimeDirectory of REQUIRED_RUNTIME_DIRECTORIES) {
     const finalPath = path.join(rootfsDir, runtimeDirectory.targetRelativePath);
     dumpDirectoryFromExt4(
@@ -148,7 +162,7 @@ export async function injectGondolinRuntime(rootfsDir: string): Promise<RuntimeI
     injectedDirectories.push(finalPath);
   }
 
-  for (const runtimeFile of REQUIRED_RUNTIME_FILES) {
+  for (const runtimeFile of runtimeFiles) {
     const finalPath = path.join(rootfsDir, runtimeFile.targetRelativePath);
     ensureParentDirectory(rootfsDir, path.dirname(finalPath));
 
@@ -167,7 +181,12 @@ export async function injectGondolinRuntime(rootfsDir: string): Promise<RuntimeI
 
   ensureSymlink(rootfsDir, "sbin/modprobe", "../bin/kmod");
   ensureSymlink(rootfsDir, "sbin/insmod", "../bin/kmod");
-  ensureSymlink(rootfsDir, "lib/libc.musl-aarch64.so.1", "ld-musl-aarch64.so.1");
+
+  const muslLibcSymlinkName = deriveMuslLibcSymlinkName(loaderFileName);
+  if (muslLibcSymlinkName) {
+    ensureSymlink(rootfsDir, `lib/${muslLibcSymlinkName}`, loaderFileName);
+  }
+
   ensureSymlink(rootfsDir, "usr/lib/liblzma.so.5", "liblzma.so.5.8.2");
   ensureSymlink(rootfsDir, "usr/lib/libz.so.1", "libz.so.1.3.1");
   ensureSymlink(rootfsDir, "usr/lib/libzstd.so.1", "libzstd.so.1.5.7");
@@ -177,6 +196,43 @@ export async function injectGondolinRuntime(rootfsDir: string): Promise<RuntimeI
     injectedFiles,
     injectedDirectories,
   };
+}
+
+function resolveExistingPathInExt4(
+  debugfsCmd: string,
+  ext4Path: string,
+  candidates: string[],
+  label: string,
+): string {
+  for (const candidate of candidates) {
+    if (pathExistsInExt4(debugfsCmd, ext4Path, candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new CliUsageError(`Failed to locate required ${label} in base rootfs.`, [
+    `Searched paths: ${candidates.join(", ")}`,
+    `Base rootfs: ${ext4Path}`,
+    "Ensure gondolin guest assets are complete for your host architecture.",
+  ]);
+}
+
+function pathExistsInExt4(debugfsCmd: string, ext4Path: string, sourcePath: string): boolean {
+  const result = spawnSync(debugfsCmd, ["-R", `stat ${sourcePath}`, ext4Path], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  return result.status === 0;
+}
+
+function deriveMuslLibcSymlinkName(loaderFileName: string): string | undefined {
+  const match = /^ld-musl-(.+)\.so\.1$/.exec(loaderFileName);
+  if (!match) {
+    return undefined;
+  }
+
+  return `libc.musl-${match[1]}.so.1`;
 }
 
 function dumpDirectoryFromExt4(
