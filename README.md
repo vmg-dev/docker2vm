@@ -1,6 +1,6 @@
 # docker2vm
 
-`docker2vm` converts OCI container images (or Dockerfiles via BuildKit) into VM-compatible outputs. Today, the runtime materialization target is Gondolin.
+`docker2vm` converts OCI container images (or Dockerfiles via BuildKit) into VM-compatible outputs. Today, the runtime materialization target is [Gondolin](https://github.com/earendil-works/gondolin).
 
 It follows an OCI-first flow inspired by "Docker without Docker":
 
@@ -53,6 +53,11 @@ Ubuntu helpers:
 sudo apt-get install -y e2fsprogs qemu-system-x86
 ```
 
+## Platform setup guides
+
+- [macOS guide](./docs/macos.md)
+- [Linux guide](./docs/linux.md)
+
 ## Install
 
 ```bash
@@ -74,6 +79,21 @@ bun run build
 ```bash
 bun run test:integration
 ```
+
+### Choosing the build platform (`--platform`)
+
+`--platform` selects which OCI image variant to convert, and should match the architecture you plan to run in Gondolin.
+
+- Apple Silicon / arm64 Linux hosts: `linux/arm64`
+- Intel / amd64 hosts: `linux/amd64`
+- If omitted, `oci2gondolin` defaults from host arch (`x64 -> linux/amd64`, `arm64 -> linux/arm64`).
+
+For helper scripts:
+
+- `e2e:smoke` uses `PLATFORM`
+- integration tests use `INTEGRATION_PLATFORM`
+
+Cross-arch builds are possible at image-selection time, but for reliable runtime execution you should use a platform that matches the runtime guest architecture.
 
 ### 2) Convert image -> assets
 
@@ -176,4 +196,5 @@ dockerfile2gondolin --file PATH --context PATH --out PATH [options]
 ## Repo notes
 
 - This repo is standalone; Gondolin core is not modified.
+- Gondolin upstream repository: https://github.com/earendil-works/gondolin
 - `out/` is generated output and ignored by git.
