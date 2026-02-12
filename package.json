@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "OCI-first container-to-VM image tooling",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "type": "commonjs",
   "bin": {
     "oci2gondolin": "./dist/bin/oci2gondolin.js",
