@@ -2,7 +2,7 @@
 
 This guide is for running `docker2vm` on macOS (Apple Silicon or Intel).
 
-`docker2vm` itself has **0 runtime npm dependencies**; system/runtime tools are installed separately.
+`docker2vm` includes a pinned Gondolin runtime dependency (`@earendil-works/gondolin@0.2.1`) to resolve guest assets during conversion.
 
 ## 1) Install required tools
 
@@ -24,22 +24,14 @@ export PATH="$(brew --prefix e2fsprogs)/sbin:$PATH"
 
 To persist it, add that `export PATH=...` line to your shell profile (`~/.zshrc`, `~/.bashrc`, `~/.profile`, etc.).
 
-## 3) Install Gondolin CLI separately (tested version)
+## 3) Optional: install Gondolin CLI (for running generated assets)
 
-`docker2vm` is tested with:
+`docker2vm` is tested with `@earendil-works/gondolin@0.2.1` and can fetch guest assets automatically during conversion.
 
-- `@earendil-works/gondolin@0.2.1`
-
-Install (global):
+Install the CLI globally if you want to execute generated assets via `gondolin exec`:
 
 ```bash
 bun add -g @earendil-works/gondolin@0.2.1
-```
-
-Prime guest assets once:
-
-```bash
-gondolin exec -- /bin/true
 ```
 
 ## 4) Verify toolchain

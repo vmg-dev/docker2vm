@@ -16,7 +16,7 @@ Docker containers share the host kernel. Gondolin runs workloads inside a VM, so
 
 ## Current features
 
-- zero runtime npm dependencies (`dependencies: {}`)
+- pinned Gondolin runtime dependency (`@earendil-works/gondolin@0.2.1`) for guest-asset retrieval
 - `oci2gondolin` core converter
   - input: `--image`, `--oci-layout`, `--oci-tar` (exactly one)
   - platform: `linux/amd64`, `linux/arm64`
@@ -39,9 +39,16 @@ Docker containers share the host kernel. Gondolin runs workloads inside a VM, so
 
 - Bun >= 1.2
 - `e2fsprogs` (`mke2fs`, `debugfs`)
-- QEMU (for runtime smoke checks via `gondolin exec`)
-- Gondolin CLI installed separately (tested with `@earendil-works/gondolin@0.2.1`)
+- QEMU (for runtime smoke checks)
 - Docker (only required for `dockerfile2gondolin`)
+
+`docker2vm` uses `@earendil-works/gondolin@0.2.1` as a runtime dependency and resolves/downloads guest assets automatically during conversion.
+
+If you also want to run generated assets with `gondolin exec`, install the CLI separately:
+
+```bash
+bun add -g @earendil-works/gondolin@0.2.1
+```
 
 macOS helpers:
 
@@ -53,18 +60,6 @@ Ubuntu helpers:
 
 ```bash
 sudo apt-get install -y e2fsprogs qemu-system-x86
-```
-
-Install Gondolin CLI (tested version):
-
-```bash
-bun add -g @earendil-works/gondolin@0.2.1
-```
-
-Prime guest assets once:
-
-```bash
-gondolin exec -- /bin/true
 ```
 
 > On macOS, `docker2vm` checks common Homebrew `e2fsprogs` locations automatically; updating `PATH` is usually optional.

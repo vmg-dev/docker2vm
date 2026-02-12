@@ -50,7 +50,7 @@ export async function materializeOutput(
   let assetManifestPath: string | undefined;
 
   if (options.mode === "assets") {
-    const baseAssets = resolveGondolinGuestAssets();
+    const baseAssets = await resolveGondolinGuestAssets();
     const kernelPath = path.join(outDir, KERNEL_FILENAME);
     const initramfsPath = path.join(outDir, INITRAMFS_FILENAME);
 
