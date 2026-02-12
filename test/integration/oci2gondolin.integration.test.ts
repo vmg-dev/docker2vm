@@ -20,11 +20,11 @@ type CommandOptions = {
 };
 
 const REPO_ROOT = process.cwd();
-const IMAGE = process.env.INTEGRATION_IMAGE ?? "busybox:latest";
+const IMAGE = process.env.INTEGRATION_IMAGE ?? "debian:bookworm-slim";
 const PLATFORM = resolveIntegrationPlatform(process.env.INTEGRATION_PLATFORM ?? process.arch);
-const ROOTFS_CHECK_PATH = process.env.INTEGRATION_ROOTFS_CHECK_PATH ?? "/bin/sh";
-const VM_CHECK_COMMAND = process.env.INTEGRATION_VM_CHECK_COMMAND ?? "echo integration-vm-ok";
-const VM_CHECK_EXPECT = process.env.INTEGRATION_VM_CHECK_EXPECT ?? "integration-vm-ok";
+const ROOTFS_CHECK_PATH = process.env.INTEGRATION_ROOTFS_CHECK_PATH ?? "/etc/debian_version";
+const VM_CHECK_COMMAND = process.env.INTEGRATION_VM_CHECK_COMMAND ?? "cat /etc/debian_version";
+const VM_CHECK_EXPECT = process.env.INTEGRATION_VM_CHECK_EXPECT ?? "12";
 
 const imageSlug = IMAGE.replace(/[^a-z0-9._-]+/gi, "-").toLowerCase();
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), `docker2vm-integration-${imageSlug}-`));
@@ -140,6 +140,8 @@ describe("oci2gondolin integration", () => {
     const originalGuestDir = process.env.GONDOLIN_GUEST_DIR;
     const vmSandbox = resolveVmSandboxOptions();
 
+    await assertProbeMissingFromBaseImage(vmSandbox, originalGuestDir);
+
     let vm: VM | null = null;
     try {
       process.env.GONDOLIN_GUEST_DIR = assetsOutDir;
@@ -191,6 +193,37 @@ function resolveVmSandboxOptions(): { accel?: "tcg"; cpu?: "max" } | undefined {
       accel: "tcg",
       cpu: "max",
     };
+  }
+}
+
+async function assertProbeMissingFromBaseImage(
+  vmSandbox: { accel?: "tcg"; cpu?: "max" } | undefined,
+  originalGuestDir: string | undefined,
+): Promise<void> {
+  let vm: VM | null = null;
+
+  try {
+    if (originalGuestDir === undefined) {
+      delete process.env.GONDOLIN_GUEST_DIR;
+    } else {
+      process.env.GONDOLIN_GUEST_DIR = originalGuestDir;
+    }
+
+    vm = await VM.create({ sandbox: vmSandbox });
+    const baseResult = await vm.exec(["/bin/sh", "-lc", VM_CHECK_COMMAND]);
+
+    expect(baseResult.stdout).not.toContain(VM_CHECK_EXPECT);
+    expect(baseResult.stderr).not.toContain(VM_CHECK_EXPECT);
+  } finally {
+    await vm?.close().catch(() => {
+      // ignore close errors in test teardown
+    });
+
+    if (originalGuestDir === undefined) {
+      delete process.env.GONDOLIN_GUEST_DIR;
+    } else {
+      process.env.GONDOLIN_GUEST_DIR = originalGuestDir;
+    }
   }
 }
 

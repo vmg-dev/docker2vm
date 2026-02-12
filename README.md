@@ -88,6 +88,8 @@ The CI integration matrix currently validates:
 - `fedora:41`
 - `archlinux:latest`
 
+For each distro row, tests run a distro-specific probe command (for example `/etc/debian_version`, `/etc/fedora-release`, etc.) and also assert that probe does **not** match on the base Gondolin guest image.
+
 ### Choosing the build platform (`--platform`)
 
 `--platform` selects which OCI image variant to convert, and should match the architecture you plan to run in Gondolin.
