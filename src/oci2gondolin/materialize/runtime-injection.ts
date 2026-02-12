@@ -223,7 +223,12 @@ function pathExistsInExt4(debugfsCmd: string, ext4Path: string, sourcePath: stri
     stdio: ["ignore", "pipe", "pipe"],
   });
 
-  return result.status === 0;
+  if (result.status !== 0) {
+    return false;
+  }
+
+  const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
+  return !/file not found by ext2_lookup/i.test(output);
 }
 
 function deriveMuslLibcSymlinkName(loaderFileName: string): string | undefined {
