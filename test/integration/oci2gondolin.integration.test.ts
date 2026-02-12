@@ -25,11 +25,13 @@ const PLATFORM = resolveIntegrationPlatform(process.env.INTEGRATION_PLATFORM ?? 
 const ROOTFS_CHECK_PATH = process.env.INTEGRATION_ROOTFS_CHECK_PATH ?? "/etc/debian_version";
 const VM_CHECK_COMMAND = process.env.INTEGRATION_VM_CHECK_COMMAND ?? "cat /etc/debian_version";
 const VM_CHECK_EXPECT = process.env.INTEGRATION_VM_CHECK_EXPECT ?? "12";
+const BUSYBOX_IMAGE = process.env.INTEGRATION_BUSYBOX_IMAGE ?? "busybox:latest";
 
 const imageSlug = IMAGE.replace(/[^a-z0-9._-]+/gi, "-").toLowerCase();
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), `docker2vm-integration-${imageSlug}-`));
 const rootfsOutDir = path.join(tempRoot, `${imageSlug}-rootfs`);
 const assetsOutDir = path.join(tempRoot, `${imageSlug}-assets`);
+const busyboxAssetsOutDir = path.join(tempRoot, "busybox-assets-smoke");
 
 afterAll(() => {
   fs.rmSync(tempRoot, { recursive: true, force: true });
@@ -150,6 +152,52 @@ describe("oci2gondolin integration", () => {
       const execResult = await vm.exec(["/bin/sh", "-lc", VM_CHECK_COMMAND]);
       expect(execResult.exitCode).toBe(0);
       expect(execResult.stdout).toContain(VM_CHECK_EXPECT);
+    } finally {
+      await vm?.close().catch(() => {
+        // ignore close errors in test teardown
+      });
+
+      if (originalGuestDir === undefined) {
+        delete process.env.GONDOLIN_GUEST_DIR;
+      } else {
+        process.env.GONDOLIN_GUEST_DIR = originalGuestDir;
+      }
+    }
+  }, 420_000);
+
+  it("keeps the busybox VM smoke check", async () => {
+    requireBinary(process.arch === "arm64" ? "qemu-system-aarch64" : "qemu-system-x86_64");
+
+    const result = await runCommand(
+      "bun",
+      [
+        "run",
+        "src/bin/oci2gondolin.ts",
+        "--image",
+        BUSYBOX_IMAGE,
+        "--platform",
+        PLATFORM,
+        "--mode",
+        "assets",
+        "--out",
+        busyboxAssetsOutDir,
+      ],
+      { cwd: REPO_ROOT, timeoutMs: 300_000 },
+    );
+
+    assertSuccess(result, "oci2gondolin busybox assets conversion");
+
+    const originalGuestDir = process.env.GONDOLIN_GUEST_DIR;
+    const vmSandbox = resolveVmSandboxOptions();
+
+    let vm: VM | null = null;
+    try {
+      process.env.GONDOLIN_GUEST_DIR = busyboxAssetsOutDir;
+      vm = await VM.create({ sandbox: vmSandbox });
+
+      const busyboxResult = await vm.exec(["/bin/busybox", "echo", "integration-busybox-ok"]);
+      expect(busyboxResult.exitCode).toBe(0);
+      expect(busyboxResult.stdout).toContain("integration-busybox-ok");
     } finally {
       await vm?.close().catch(() => {
         // ignore close errors in test teardown
