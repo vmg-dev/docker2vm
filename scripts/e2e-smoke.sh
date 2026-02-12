@@ -33,12 +33,18 @@ bun run oci2gondolin -- \
   --mode assets \
   --out "${OUT_DIR}"
 
-GONDOLIN_BIN="${ROOT_DIR}/node_modules/@earendil-works/gondolin/dist/bin/gondolin.js"
-if [[ ! -f "${GONDOLIN_BIN}" ]]; then
-  echo "gondolin CLI not found at ${GONDOLIN_BIN}"
-  exit 1
+GONDOLIN_SMOKE_ACCEL="${GONDOLIN_SMOKE_ACCEL:-}"
+GONDOLIN_SMOKE_CPU="${GONDOLIN_SMOKE_CPU:-}"
+
+if [[ "$(uname -s)" == "Linux" ]] && [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
+  # qemu + tcg on CI does not support -cpu host; force a tcg-compatible model.
+  GONDOLIN_SMOKE_ACCEL="tcg"
+  GONDOLIN_SMOKE_CPU="max"
 fi
 
-GONDOLIN_GUEST_DIR="${OUT_DIR}" bun "${GONDOLIN_BIN}" exec -- /bin/busybox echo e2e-smoke-ok
+GONDOLIN_GUEST_DIR="${OUT_DIR}" \
+GONDOLIN_SMOKE_ACCEL="${GONDOLIN_SMOKE_ACCEL}" \
+GONDOLIN_SMOKE_CPU="${GONDOLIN_SMOKE_CPU}" \
+  bun ./scripts/gondolin-smoke-exec.ts /bin/busybox echo e2e-smoke-ok
 
 echo "E2E smoke test passed (image=${IMAGE}, platform=${TARGET_PLATFORM})."
