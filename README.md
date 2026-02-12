@@ -1,41 +1,56 @@
-# Gondolin Image Tools
+# gondolin-image-tools
 
-External OCI-first tooling that converts container artifacts into Gondolin-bootable images **without modifying Gondolin core**.
+`gondolin-image-tools` converts OCI container images (or Dockerfiles via BuildKit) into Gondolin-compatible outputs.
 
-## Status
+It follows an OCI-first flow inspired by "Docker without Docker":
 
-Implemented and working:
+- resolve/pull an OCI image
+- apply layers to a root filesystem
+- inject Gondolin runtime glue (init/sandbox binaries/modules)
+- materialize `rootfs.ext4` (and optionally full guest assets)
+- run with Gondolin
 
-- ✅ `oci2gondolin` core converter
-  - input sources: `--image`, `--oci-layout`, `--oci-tar` (exactly one)
-  - platform selection (`linux/amd64`, `linux/arm64`, plus short forms)
-  - output modes: `rootfs`, `assets`
-  - structured dry-run plans
-  - actionable validation + runtime errors
-- ✅ OCI resolver/puller for public registries (Bearer token flow)
-- ✅ digest verification + local blob cache
-- ✅ layer apply engine (tar+gzip, whiteouts, secure extraction checks)
-- ✅ materialization
-  - ext4 image creation (`rootfs.ext4`)
-  - metadata emission (`meta.json`)
-  - assets output (`vmlinuz-virt`, `initramfs.cpio.lz4`, `rootfs.ext4`, `manifest.json`)
-- ✅ `dockerfile2gondolin` thin wrapper
-  - BuildKit via `docker buildx` (temp docker-container builder)
-  - BuildKit via `buildctl`
-  - delegates conversion to `oci2gondolin`
-- ✅ unit tests for argument parsing/validation
+## Why this exists
+
+Docker containers share the host kernel. Gondolin runs workloads inside a VM, so we need to convert container artifacts into a bootable guest rootfs while keeping Gondolin's kernel/init/runtime contract.
+
+## Current features
+
+- `oci2gondolin` core converter
+  - input: `--image`, `--oci-layout`, `--oci-tar` (exactly one)
+  - platform: `linux/amd64`, `linux/arm64`
+  - modes: `rootfs`, `assets`
+  - dry-run planning
+- `dockerfile2gondolin` thin wrapper
+  - builds Dockerfile to OCI tar (BuildKit) and delegates to `oci2gondolin`
+- secure-ish layer handling
+  - digest verification
+  - path traversal checks
+  - symlink-parent protections
+  - OCI whiteout handling
+- Gondolin runtime integration
+  - base rootfs extraction
+  - runtime file/module injection
+  - compatibility symlinks
+- CI + E2E smoke test (GitHub Actions)
 
 ## Requirements
 
-- Bun 1.2+
-- Docker (for `dockerfile2gondolin`)
-- `e2fsprogs` (`mke2fs`, `debugfs`) for rootfs creation/injection
-- (optional runtime verification) `@earendil-works/gondolin` CLI + QEMU
+- Bun >= 1.2
+- `e2fsprogs` (`mke2fs`, `debugfs`)
+- QEMU (for runtime smoke checks via `gondolin exec`)
+- Docker (only required for `dockerfile2gondolin`)
 
 macOS helpers:
 
 ```bash
 brew install e2fsprogs qemu
+```
+
+Ubuntu helpers:
+
+```bash
+sudo apt-get install -y e2fsprogs qemu-system-x86
 ```
 
 ## Install
@@ -46,7 +61,7 @@ bun install
 
 ## Quickstart
 
-### 1) Validate build + tests
+### 1) Validate
 
 ```bash
 bun test
@@ -54,7 +69,7 @@ bun run typecheck
 bun run build
 ```
 
-### 2) Convert BusyBox image to Gondolin assets
+### 2) Convert image -> assets
 
 ```bash
 bun run oci2gondolin -- \
@@ -64,103 +79,95 @@ bun run oci2gondolin -- \
   --out ./out/busybox-assets
 ```
 
-### 3) Run with Gondolin package
+### 3) Run with Gondolin
 
 ```bash
 GONDOLIN_GUEST_DIR=./out/busybox-assets bunx gondolin exec -- /bin/busybox echo hello
 ```
 
-### 4) Dockerfile -> Gondolin (wrapper)
+## Dockerfile flow
+
+Create a Dockerfile and convert it through BuildKit:
 
 ```bash
+cat > /tmp/Dockerfile.demo <<'EOF'
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends cowsay && rm -rf /var/lib/apt/lists/*
+CMD ["/bin/sh"]
+EOF
+
 bun run dockerfile2gondolin -- \
-  --file ./Dockerfile.busybox \
-  --context . \
+  --file /tmp/Dockerfile.demo \
+  --context /tmp \
   --platform linux/arm64 \
   --mode assets \
-  --out ./out/busybox-from-dockerfile
+  --out ./out/demo-assets
 ```
 
-Then:
+Then run:
 
 ```bash
-GONDOLIN_GUEST_DIR=./out/busybox-from-dockerfile bunx gondolin exec -- /bin/busybox echo wrapper-ok
+GONDOLIN_GUEST_DIR=./out/demo-assets bunx gondolin exec -- /usr/games/cowsay "hello"
 ```
 
-## Distro smoke matrix (arm64)
+## End-to-end smoke test
 
-Validated with `gondolin exec`:
-
-- Alpine (`alpine:3.20`)
-- Debian (`debian:bookworm-slim`)
-- Ubuntu (`ubuntu:24.04`)
-- Fedora (`fedora:latest`)
-- Arch Linux ARM (`menci/archlinuxarm:latest`)
-
-### macOS note (case-sensitive temp workspace)
-
-Some images (notably Arch/Fedora) include case-sensitive filesystem paths that conflict on default case-insensitive macOS volumes. Use a case-sensitive temp mount and point `TMPDIR` at it when converting:
+Local/CI smoke test script:
 
 ```bash
-CASE_ROOT=$(mktemp -d)
-IMG="$CASE_ROOT/oci2gondolin-casefs.sparseimage"
-MP="$CASE_ROOT/mount"
-mkdir -p "$MP"
-
-hdiutil create -size 8g -type SPARSE -fs 'Case-sensitive APFS' -volname Oci2GondolinCase "$IMG"
-hdiutil attach "$IMG" -mountpoint "$MP" -nobrowse
-
-TMPDIR="$MP" bun run oci2gondolin -- --image menci/archlinuxarm:latest --platform linux/arm64 --mode assets --out ./out/arch-assets
-GONDOLIN_GUEST_DIR=./out/arch-assets bunx gondolin exec -- /bin/sh -lc 'cat /etc/os-release | head -n 2'
-
-hdiutil detach "$MP"
-rm -rf "$CASE_ROOT"
+bun run e2e:smoke
 ```
 
-## Dry-run examples
+Optional env overrides:
+
+- `PLATFORM` (default auto-detected from host arch)
+- `IMAGE` (default `busybox:latest`)
+- `OUT_DIR` (default `./out/e2e-busybox-assets`)
+
+Example:
 
 ```bash
-bun run oci2gondolin -- --image busybox:latest --out ./out/plan --dry-run
-bun run dockerfile2gondolin -- --file ./Dockerfile --context . --out ./out/plan --dry-run
+PLATFORM=linux/amd64 IMAGE=busybox:latest bun run e2e:smoke
 ```
 
-## Commands
+## CLI summary
 
 ### `oci2gondolin`
 
-- Input source (exactly one):
-  - `--image <ref>`
-  - `--oci-layout <path>`
-  - `--oci-tar <path>`
-- `--platform linux/amd64|linux/arm64` (or `amd64|arm64`)
-- `--mode rootfs|assets` (default: `rootfs`)
-- `--out <path>` (required)
-- `--dry-run`
+```text
+oci2gondolin (--image REF | --oci-layout PATH | --oci-tar PATH) [options]
+
+--platform linux/amd64|linux/arm64
+--mode rootfs|assets
+--out PATH
+--dry-run
+```
 
 ### `dockerfile2gondolin`
 
-- `--file <path>` (required)
-- `--context <path>` (required)
-- `--out <path>` (required)
-- `--platform linux/amd64|linux/arm64`
-- `--mode rootfs|assets`
-- `--builder docker-buildx|buildctl`
-- `--target <stage>`
-- `--build-arg KEY=VALUE` (repeatable)
-- `--secret ...` (repeatable)
-- `--dry-run`
+```text
+dockerfile2gondolin --file PATH --context PATH --out PATH [options]
 
-## Architecture
+--platform linux/amd64|linux/arm64
+--mode rootfs|assets
+--builder docker-buildx|buildctl
+--target NAME
+--build-arg KEY=VALUE  (repeatable)
+--secret SPEC          (repeatable)
+--dry-run
+```
 
-- `oci2gondolin` contains the converter pipeline (resolver/puller/layer-apply/materialize)
-- converter applies OCI layers on top of an extracted Gondolin base rootfs to preserve runtime compatibility (`sandboxd`, `sandboxfs`, init flow)
-- `dockerfile2gondolin` is a wrapper layer around BuildKit + `oci2gondolin`
-- gondolin core remains external/unmodified
+## Architecture overview
 
-## Planning docs
+1. **Resolver**: pick correct manifest for requested platform
+2. **Puller**: fetch blobs + verify digest
+3. **Layer apply**: unpack tar layers in order with whiteouts
+4. **Materialize**:
+   - emit `rootfs.ext4`
+   - emit `meta.json`
+   - in `assets` mode also copy kernel/initramfs and write `manifest.json`
 
-- [`01-oci2gondolin-spec.md`](./01-oci2gondolin-spec.md)
-- [`02-dockerfile2gondolin-wrapper.md`](./02-dockerfile2gondolin-wrapper.md)
-- [`03-implementation-phases.md`](./03-implementation-phases.md)
-- [`04-testing-and-release.md`](./04-testing-and-release.md)
-- [`05-open-questions.md`](./05-open-questions.md)
+## Repo notes
+
+- This repo is standalone; Gondolin core is not modified.
+- `out/` is generated output and ignored by git.

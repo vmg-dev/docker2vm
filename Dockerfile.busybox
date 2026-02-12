@@ -1,2 +1,0 @@
-FROM busybox:latest
-CMD ["/bin/busybox", "echo", "hello-from-dockerfile"]

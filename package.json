@@ -13,6 +13,7 @@
     "build": "rm -rf dist && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "bun test",
+    "e2e:smoke": "bash ./scripts/e2e-smoke.sh",
     "oci2gondolin": "bun run src/bin/oci2gondolin.ts",
     "dockerfile2gondolin": "bun run src/bin/dockerfile2gondolin.ts"
   },
