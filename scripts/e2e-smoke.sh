@@ -33,6 +33,12 @@ bun run oci2gondolin -- \
   --mode assets \
   --out "${OUT_DIR}"
 
-GONDOLIN_GUEST_DIR="${OUT_DIR}" bunx gondolin exec -- /bin/busybox echo e2e-smoke-ok
+GONDOLIN_BIN="${ROOT_DIR}/node_modules/@earendil-works/gondolin/dist/bin/gondolin.js"
+if [[ ! -f "${GONDOLIN_BIN}" ]]; then
+  echo "gondolin CLI not found at ${GONDOLIN_BIN}"
+  exit 1
+fi
+
+GONDOLIN_GUEST_DIR="${OUT_DIR}" bun "${GONDOLIN_BIN}" exec -- /bin/busybox echo e2e-smoke-ok
 
 echo "E2E smoke test passed (image=${IMAGE}, platform=${TARGET_PLATFORM})."
