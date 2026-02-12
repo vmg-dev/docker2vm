@@ -6,11 +6,14 @@ This guide is for running `docker2vm` on macOS (Apple Silicon or Intel).
 
 ## 1) Install required tools
 
-```bash
-brew install bun qemu e2fsprogs
-```
+Install tools using their official docs/download pages:
 
-If you want Dockerfile conversion (`dockerfile2gondolin`), also install Docker Desktop.
+- Bun: https://bun.com/
+- QEMU: https://www.qemu.org/download/
+- e2fsprogs: https://e2fsprogs.sourceforge.net/
+
+If you want Dockerfile conversion (`dockerfile2gondolin`), also install Docker Desktop:
+- https://docs.docker.com/desktop/setup/install/mac-install/
 
 ## 2) Optional: add `e2fsprogs` binaries to `PATH`
 
@@ -28,11 +31,11 @@ To persist it, add that `export PATH=...` line to your shell profile (`~/.zshrc`
 
 `docker2vm` is tested with `@earendil-works/gondolin@0.2.1` and can fetch guest assets automatically during conversion.
 
-Install the CLI globally if you want to execute generated assets via `gondolin exec`:
+Gondolin CLI docs:
+- https://earendil-works.github.io/gondolin/cli/
 
-```bash
-bun add -g @earendil-works/gondolin@0.2.1
-```
+Package page:
+- https://www.npmjs.com/package/@earendil-works/gondolin
 
 ## 4) Verify toolchain
 

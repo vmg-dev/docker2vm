@@ -37,30 +37,16 @@ Docker containers share the host kernel. Gondolin runs workloads inside a VM, so
 
 ## Requirements
 
-- Bun >= 1.2
-- `e2fsprogs` (`mke2fs`, `debugfs`)
-- QEMU (for runtime smoke checks)
-- Docker (only required for `dockerfile2gondolin`)
+- Bun >= 1.2 — https://bun.com/
+- `e2fsprogs` (`mke2fs`, `debugfs`) — https://e2fsprogs.sourceforge.net/
+- QEMU (for runtime smoke checks) — https://www.qemu.org/download/
+- Docker (only required for `dockerfile2gondolin`) — https://docs.docker.com/get-docker/
 
 `docker2vm` uses `@earendil-works/gondolin@0.2.1` as a runtime dependency and resolves/downloads guest assets automatically during conversion.
 
-If you also want to run generated assets with `gondolin exec`, install the CLI separately:
-
-```bash
-bun add -g @earendil-works/gondolin@0.2.1
-```
-
-macOS helpers:
-
-```bash
-brew install e2fsprogs qemu
-```
-
-Ubuntu helpers:
-
-```bash
-sudo apt-get install -y e2fsprogs qemu-system-x86
-```
+If you also want to run generated assets with `gondolin exec`, install the Gondolin CLI:
+- CLI docs: https://earendil-works.github.io/gondolin/cli/
+- Package: https://www.npmjs.com/package/@earendil-works/gondolin
 
 > On macOS, `docker2vm` checks common Homebrew `e2fsprogs` locations automatically; updating `PATH` is usually optional.
 
@@ -93,7 +79,7 @@ The CI integration matrix currently validates:
 - `fedora:41`
 - `archlinux:latest`
 
-For each distro row, tests run a distro-specific probe command (for example `/etc/debian_version`, `/etc/fedora-release`, etc.) and also assert that probe does **not** match on the base Gondolin guest image.
+For each distro row, tests run a distro-specific probe command (for example `/etc/debian_version`, `/etc/fedora-release`, etc.), assert that probe does **not** match on the base Gondolin guest image, and verify `/bin/busybox` executes inside the converted image.
 
 ### Choosing the build platform (`--platform`)
 

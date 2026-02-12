@@ -6,32 +6,25 @@ This guide is for running `docker2vm` on Linux hosts.
 
 ## 1) Install required tools
 
-### Ubuntu / Debian
+Install tools using their official docs/download pages:
 
-```bash
-sudo apt-get update
-sudo apt-get install -y curl unzip e2fsprogs qemu-system-x86
-```
+- Bun: https://bun.com/
+- QEMU: https://www.qemu.org/download/
+- e2fsprogs: https://e2fsprogs.sourceforge.net/
 
-Install Bun:
+If you want Dockerfile conversion (`dockerfile2gondolin`), also install Docker + Buildx:
 
-```bash
-curl -fsSL https://bun.sh/install | bash
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
-```
-
-If you want Dockerfile conversion (`dockerfile2gondolin`), install Docker and Buildx.
+- Docker: https://docs.docker.com/get-docker/
+- Buildx: https://docs.docker.com/build/buildx/install/
 
 ## 2) Optional: install Gondolin CLI (for running generated assets)
 
 `docker2vm` is tested with `@earendil-works/gondolin@0.2.1` and can fetch guest assets automatically during conversion.
 
-Install the CLI globally if you want to execute generated assets via `gondolin exec`:
+Use Gondolin CLI install docs:
 
-```bash
-bun add -g @earendil-works/gondolin@0.2.1
-```
+- https://earendil-works.github.io/gondolin/cli/
+- Package page: https://www.npmjs.com/package/@earendil-works/gondolin
 
 ## 3) Verify toolchain
 
