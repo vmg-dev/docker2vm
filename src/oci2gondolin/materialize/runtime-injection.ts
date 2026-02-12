@@ -28,6 +28,11 @@ const REQUIRED_RUNTIME_FILES: RuntimeFileSpec[] = [
     mode: 0o755,
   },
   {
+    sourcePathInRootfs: "/bin/busybox",
+    targetRelativePath: "bin/busybox",
+    mode: 0o755,
+  },
+  {
     sourcePathInRootfs: "/usr/lib/libcrypto.so.3",
     targetRelativePath: "usr/lib/libcrypto.so.3",
     mode: 0o644,
